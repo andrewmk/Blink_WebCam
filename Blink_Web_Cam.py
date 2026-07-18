@@ -15,6 +15,8 @@ import os
 import sys
 import warnings
 import time
+import base64
+import uuid
 
 # Import custom modules
 from log_rotation import LogRotator
@@ -36,6 +38,22 @@ sys.stderr = SuppressSpecificErrors(sys.stderr)
 # ---------------- Configuration ---------------- #
 TOKEN_FILE = "blink_token.json"
 CONFIG_FILE = "blink_config.json"
+
+
+def extract_hardware_id(token_data):
+    """Extract hardware_id from the JWT access token payload, with fallback."""
+    try:
+        token = token_data.get("token", "")
+        payload = token.split(".")[1]
+        payload += "=" * (-len(payload) % 4)
+        decoded = json.loads(base64.urlsafe_b64decode(payload))
+        hw_id = decoded.get("hardware_id")
+        if hw_id:
+            return hw_id
+    except Exception:
+        pass
+    return token_data.get("hardware_id") or str(uuid.uuid4()).upper()
+
 
 # Load token
 with open(TOKEN_FILE, "r") as f:
@@ -205,7 +223,7 @@ async def poll_blink():
         host_url = token_data.get("host", "")
         region_id = host_url.replace("https://rest-", "").replace(".immedia-semi.com", "")
 
-        blink.auth = Auth({}, session=session, no_prompt=True)
+        blink.auth = Auth({"device_id": extract_hardware_id(token_data)}, session=session, no_prompt=True)
         blink.auth.region_id = region_id
         blink.auth.host = host_url
         blink.auth.token = token_data.get("token")

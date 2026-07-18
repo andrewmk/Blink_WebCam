@@ -6,9 +6,26 @@ from blinkpy.blinkpy import Blink
 from blinkpy.auth import Auth
 from blinkpy.helpers.util import BlinkURLHandler
 from nws_alerts import validate_nws_zone
+import base64
+import uuid
 
 CONFIG_FILE = "blink_config.json"
 TOKEN_FILE = "blink_token.json"
+
+
+def extract_hardware_id(token_data):
+    """Extract hardware_id from the JWT access token payload, with fallback."""
+    try:
+        token = token_data.get("token", "")
+        payload = token.split(".")[1]
+        payload += "=" * (-len(payload) % 4)
+        decoded = json.loads(base64.urlsafe_b64decode(payload))
+        hw_id = decoded.get("hardware_id")
+        if hw_id:
+            return hw_id
+    except Exception:
+        pass
+    return token_data.get("hardware_id") or str(uuid.uuid4()).upper()
 
 
 def get_input_with_default(prompt, default_value, value_type=str):
@@ -134,7 +151,7 @@ async def setup_config():
         host_url = token_data.get("host", "")
         region_id = host_url.replace("https://rest-", "").replace(".immedia-semi.com", "")
 
-        blink.auth = Auth({}, session=session, no_prompt=True)
+        blink.auth = Auth({"device_id": extract_hardware_id(token_data)}, session=session, no_prompt=True)
         blink.auth.region_id = region_id
         blink.auth.host = host_url
         blink.auth.token = token_data.get("token")
@@ -338,7 +355,7 @@ async def setup_config():
 
             print("\n\u25B6 Radar Zoom Level")
             print("  4  = Continental view")
-            print("  7  = Regional view (default)")
+            print("  5  = Regional view (default)")
             print(" 10  = Local view")
             radar_config["zoom"] = get_input_with_default("\nZoom level", radar_config["zoom"], int)
 

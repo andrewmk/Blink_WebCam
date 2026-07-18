@@ -90,12 +90,13 @@ class RadarWidget {
 
     formatTimestamp(unixTimestamp) {
         const date = new Date(unixTimestamp * 1000);
-        let hours = date.getHours();
-        const ampm = hours >= 12 ? 'PM' : 'AM';
-        hours = hours % 12;
-        hours = hours ? hours : 12; 
-        const minutes = date.getMinutes().toString().padStart(2, '0');
-        return `${hours}:${minutes} ${ampm} RainViewer.com`;
+        const timeStr = date.toLocaleString('en-US', {
+            timeZone: 'America/New_York',
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true
+        });
+        return `${timeStr} RainViewer.com`;
     }
 
     updateTimestamp(frameIndex) {
