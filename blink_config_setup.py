@@ -267,6 +267,7 @@ async def setup_config():
             print("  [15] Every 15 minutes")
             print("  [30] Every 30 minutes")
             print("  [60] Every 60 minutes")
+            print("  [720] Every 12 hours")
             poll_minutes = get_input_with_default("\nMinutes", existing_poll, int)
             poll_interval = poll_minutes * 60
 

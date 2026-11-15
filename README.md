@@ -201,7 +201,7 @@ Select which cameras from your account to monitor. You can monitor all of them o
 Enter your city and 2-letter state code (e.g. `Pittsburgh` and `PA`). The script will automatically look up your GPS coordinates for weather and radar.
 
 **Polling Interval**
-How often snapshots are taken. Options are 1, 5, 10, 15, 30, or 60 minutes. The default is 5 minutes.
+How often snapshots are taken. Options are 1, 5, 10, 15, 30, 60 minutes, or 12 hours (720 minutes). The default is 5 minutes.
 
 **Image Retention**
 How many days of photos to keep per camera. The default is 7 days. Older photos are automatically deleted.
