@@ -1,5 +1,6 @@
 import asyncio
 import json
+import sys
 from aiohttp import ClientSession
 from blinkpy.blinkpy import Blink
 from blinkpy.auth import Auth, BlinkTwoFARequiredError
@@ -18,6 +19,18 @@ async def start():
     except BlinkTwoFARequiredError:
         # If 2FA is required, prompt for it
         await blink.prompt_2fa()
+
+    # start() returns False when the platform did not set up, and a failed
+    # 2FA prompt leaves it False too; without a full setup blink.urls is
+    # still None and refresh() crashes with an unhelpful AttributeError.
+    if not blink.available:
+        print("\n\u2717 Blink login failed - the platform did not set up.")
+        print("  Check that the email and password are correct.")
+        print("  If your account uses two-factor authentication, re-run and")
+        print("  enter the code when prompted (sent by SMS or email).")
+        print("  The error lines above show the response Blink returned.")
+        await session.close()
+        sys.exit(1)
 
     print("\n\U0001F4F9 Discovering cameras...")
 

@@ -4,6 +4,35 @@ All notable changes to Blink WebCam Monitor are documented here.
 
 ---
 
+## [1.2.0] - 2026-11-15
+
+### Added
+
+- **12-hour polling interval** -- the setup wizard's Polling Interval menu now offers
+  `[720] Every 12 hours` alongside the existing 1–60 minute options. The engine needed no
+  changes: the interval math pins snapshots to the hour exactly 12 hours apart (first
+  snapshot 12 hours after the top of the startup hour), and the dashboard's stale threshold
+  scales with the interval (3x = 36 hours).
+- `README.md` updated with the new interval option
+
+### Fixed
+
+- **Sign-in failure for accounts using two-factor authentication** -- Blink now
+  signals a 2FA challenge as HTTP 202 with a TSV body instead of HTTP 412, which
+  `blinkpy 0.25.5` misread as a generic "Login failed", so the 2FA code prompt
+  never appeared. `blink_token.py` then crashed with an unhelpful `AttributeError`
+  on `blink.urls.base_url`; it now exits with a clear, actionable error whenever
+  login or 2FA setup fails.
+
+### Changed
+
+- `requirements.txt`: `blinkpy` 0.25.5 → 0.25.9 (handles the new 2FA 202+TSV
+  response and logs the HTTP status + body on failed sign-in); `aiohttp`
+  3.13.5 → 3.14.5, `requests` 2.32.5 → 2.34.2, `yarl` 1.23.0 → 1.25.1 to
+  satisfy blinkpy 0.25.9 minimums
+
+---
+
 ## [1.1.0] - 2026-06-28
 
 ### Fixed
