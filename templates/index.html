@@ -118,7 +118,7 @@
             {# Snooze Badge #}
             {% if camera.snooze_status.is_snoozed %}
             <div class="snooze-badge" id="snooze-badge-{{ camera.normalized_name }}" data-expiry="{{ camera.snooze_status.snooze_until }}">
-                <div>&#x1F515; Until {{ camera.snooze_status.snooze_until_full }}</div>
+                <div>&#x1F515; Until <span id="snooze-until-{{ camera.normalized_name }}"></span></div>
                 <div id="snooze-countdown-{{ camera.normalized_name }}" style="font-size: 0.95em; font-weight: bold;">{{ camera.snooze_status.minutes_remaining }}m left</div>
             </div>
             {% endif %}
@@ -215,12 +215,16 @@ window.BlinkConfig = {
     TEMP_HOT_THRESHOLD: 113,
     TEMP_COLD_THRESHOLD: -4,
     BATTERY_LOW_THRESHOLD: 20,
-    POLL_INTERVAL_MINUTES: {{ config.get('poll_interval', 300) // 60 }}
+    POLL_INTERVAL_MINUTES: {{ config.get('poll_interval', 300) // 60 }},
+    LOCALE: "{{ locale_settings.locale }}",
+    TIMEZONE: "{{ locale_settings.timezone if locale_settings.timezone else '' }}",
+    TEMP_UNIT: "{{ locale_settings.temperature_unit }}"
 };
 console.log('BlinkConfig loaded:', window.BlinkConfig);
 </script>
 
 <!-- Load JavaScript modules IN ORDER -->
+<script src="{{ url_for('static', filename='js/format.js') }}"></script>
 <script src="{{ url_for('static', filename='js/camera.js') }}"></script>
 <script src="{{ url_for('static', filename='js/snooze.js') }}"></script>
 <script src="{{ url_for('static', filename='js/camera-refresh.js') }}"></script>
