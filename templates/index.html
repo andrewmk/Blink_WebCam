@@ -77,22 +77,6 @@
         </p>
     </div>
     <div class="header-right">
-        <div class="radar-widget" id="radar-widget">
-            <div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--card-text);padding:20px;text-align:center;">
-                Loading radar...
-            </div>
-        </div>
-        <div class="weather-widget" id="weather-widget">
-            <div class="weather-loading">Loading weather...</div>
-        </div>
-        <!-- NWS Alert Widget -->
-        <div class="nws-alert-widget" id="nws-alert-widget" style="display: none;">
-            <!-- Populated by nws-alerts.js -->
-        </div>
-        <!-- NHC Hurricane Alert Widget -->
-        <div class="nws-alert-widget" id="nhc-alert-widget" style="display: none;">
-            <!-- Populated by nhc-alerts.js -->
-        </div>
         <div class="arm-toggle" id="arm-toggle" onclick="toggleArm()">
             <div class="arm-toggle-slider">
                 <span id="arm-icon">&#x1F513;</span>
@@ -231,21 +215,12 @@ window.BlinkConfig = {
     TEMP_HOT_THRESHOLD: 113,
     TEMP_COLD_THRESHOLD: -4,
     BATTERY_LOW_THRESHOLD: 20,
-    POLL_INTERVAL_MINUTES: {{ config.get('poll_interval', 300) // 60 }},
-    WEATHER_LOCATION: "{{ location.display if location else 'Bethel Park, PA' }}",
-    WEATHER_CITY: "{{ location.city if location else 'Bethel Park' }}",
-    WEATHER_STATE: "{{ location.state if location else 'PA' }}",
-    WEATHER_LAT: "{{ location.lat | default(40.3267) }}",
-    WEATHER_LON: "{{ location.lon | default(-80.0171) }}"
+    POLL_INTERVAL_MINUTES: {{ config.get('poll_interval', 300) // 60 }}
 };
 console.log('BlinkConfig loaded:', window.BlinkConfig);
 </script>
 
 <!-- Load JavaScript modules IN ORDER -->
-<script src="{{ url_for('static', filename='js/weather.js') }}"></script>
-<script src="{{ url_for('static', filename='js/radar.js') }}"></script>
-<script src="{{ url_for('static', filename='js/nws-alerts.js') }}"></script>
-<script src="{{ url_for('static', filename='js/nhc-alerts.js') }}"></script>
 <script src="{{ url_for('static', filename='js/camera.js') }}"></script>
 <script src="{{ url_for('static', filename='js/snooze.js') }}"></script>
 <script src="{{ url_for('static', filename='js/camera-refresh.js') }}"></script>
