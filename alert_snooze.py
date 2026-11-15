@@ -13,6 +13,18 @@ import json
 from typing import Optional
 
 
+def parse_snooze_datetime(value: str) -> datetime:
+    """Parse a stored snooze expiry.
+
+    Entries are stored as offset-aware ISO strings. Legacy entries are
+    naive local time — attach the local timezone so aware comparisons work.
+    """
+    dt = datetime.fromisoformat(value)
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=datetime.now().astimezone().tzinfo)
+    return dt
+
+
 class AlertSnooze:
     """Manages per-camera alert snooze settings"""
 
@@ -53,7 +65,7 @@ class AlertSnooze:
             camera_name: Normalized camera name (e.g., "front-door")
             duration_minutes: How long to snooze (in minutes)
         """
-        snooze_until = datetime.now() + timedelta(minutes=duration_minutes)
+        snooze_until = datetime.now().astimezone() + timedelta(minutes=duration_minutes)
 
         self.snooze_data[camera_name] = {
             "snoozed_until": snooze_until.isoformat()
@@ -71,7 +83,7 @@ class AlertSnooze:
             camera_names: List of normalized camera names
             duration_minutes: How long to snooze (in minutes)
         """
-        snooze_until = datetime.now() + timedelta(minutes=duration_minutes)
+        snooze_until = datetime.now().astimezone() + timedelta(minutes=duration_minutes)
 
         for camera_name in camera_names:
             self.snooze_data[camera_name] = {
@@ -121,8 +133,8 @@ class AlertSnooze:
             return False
 
         try:
-            snooze_until = datetime.fromisoformat(snooze_until_str)
-            now = datetime.now()
+            snooze_until = parse_snooze_datetime(snooze_until_str)
+            now = datetime.now().astimezone()
 
             if now >= snooze_until:
                 # Snooze expired, auto-remove
@@ -166,7 +178,7 @@ class AlertSnooze:
         snooze_until_str = self.snooze_data[camera_name].get("snoozed_until")
         if snooze_until_str:
             try:
-                return datetime.fromisoformat(snooze_until_str)
+                return parse_snooze_datetime(snooze_until_str)
             except:
                 return None
         return None
@@ -222,12 +234,14 @@ class AlertSnooze:
         }
 
         if is_snoozed and expiry:
+            # Offset-aware ISO — the web page formats it in the machine's locale
             status["snooze_until"] = expiry.isoformat()
+            # Formatted fields remain for the CLI (this module's __main__)
             status["snooze_until_formatted"] = expiry.strftime("%I:%M:%S %p")
             status["snooze_until_full"] = expiry.strftime("%m/%d/%Y %I:%M:%S %p")
 
             # Calculate minutes remaining
-            now = datetime.now()
+            now = datetime.now().astimezone()
             minutes_remaining = int((expiry - now).total_seconds() / 60)
             status["minutes_remaining"] = max(0, minutes_remaining)
 
