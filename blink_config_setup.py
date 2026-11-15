@@ -5,7 +5,6 @@ from aiohttp import ClientSession
 from blinkpy.blinkpy import Blink
 from blinkpy.auth import Auth
 from blinkpy.helpers.util import BlinkURLHandler
-from nws_alerts import validate_nws_zone
 import base64
 import uuid
 
@@ -89,36 +88,6 @@ async def setup_config():
                 print("\u25A1 Max days:", max_days)
                 print("\u25A1 Max images per camera (calculated):", max_images)
                 print("\u25B6 Carousel images:", config.get("carousel_images", 5))
-                loc = config.get("location", {})
-                print("\u25A0 Location:", loc.get("display", "Unknown"))
-                print("\u2600 Coordinates:", loc.get("lat", "N/A"), loc.get("lon", "N/A"))
-
-                # Weather configuration
-                weather = config.get("weather", {})
-                print("\n\u25B6 WEATHER CONFIGURATION:")
-                print(f"  Enabled: {weather.get('enabled', False)}")
-                if weather.get('api_key'):
-                    print(f"  Tomorrow.io API key: {weather['api_key'][:20]}...")
-
-                radar = config.get("radar", {})
-                print("\n\u25B6 RADAR CONFIGURATION:")
-                print(f"  Enabled: {radar.get('enabled', False)}")
-                print(f"  Animation frames: {radar.get('frames', 5)}")
-                print(f"  Zoom level: {radar.get('zoom', 7)}")
-                if radar.get('mapbox_token'):
-                    print(f"  Mapbox token: {radar['mapbox_token'][:20]}...")
-
-                # NWS Alerts configuration
-                nws = config.get("nws_alerts", {})
-                print("\n\u25B6 NWS ALERTS CONFIGURATION:")
-                print(f"  Enabled: {nws.get('enabled', False)}")
-                if nws.get('zone'):
-                    print(f"  Zone: {nws.get('zone')}")
-
-                # NHC Alerts configuration
-                nhc = config.get("nhc_alerts", {})
-                print("\n\u25B6 NHC HURRICANE ALERTS CONFIGURATION:")
-                print(f"  Enabled: {nhc.get('enabled', False)}")
 
                 print("=" * 60)
             except Exception as e:
@@ -216,46 +185,6 @@ async def setup_config():
             for cam in selected_cameras:
                 print(f"  \u2022 {cam}")
 
-            # --- Location ---
-            print("\n\u25A0 Location Settings")
-            print("-" * 60)
-            existing_loc = existing_config.get("location", {})
-
-            city = get_input_with_default("City", existing_loc.get("city"))
-            while not city:
-                print("\u274C City cannot be empty!")
-                city = input("City: ").strip()
-
-            state = get_input_with_default("State (2-letter code, e.g., PA)", existing_loc.get("state"))
-            while not state or len(state) != 2:
-                print("\u274C Please enter a valid 2-letter state code!")
-                state = input("State (2-letter code): ").strip().upper()
-
-            location = f"{city}, {state}"
-            print(f"\n\u2705 Location set to: {location}")
-
-            # --- Geocode for coordinates ---
-            location_changed = (city != existing_loc.get("city") or
-                                state != existing_loc.get("state"))
-
-            if location_changed or not existing_loc.get("lat"):
-                print("\nLooking up coordinates...")
-                geocode_url = f"https://nominatim.openstreetmap.org/search?city={city}&state={state}&country=USA&format=json"
-                async with session.get(geocode_url, headers={"User-Agent": "BlinkRadar/1.0"}) as resp:
-                    data = await resp.json()
-
-                if not data:
-                    print("\u26A0 Could not determine GPS coordinates, using defaults")
-                    lat, lon = 40.3267, -80.0171
-                else:
-                    lat = float(data[0]["lat"])
-                    lon = float(data[0]["lon"])
-                    print(f"\u25B6 Coordinates found: LAT = {lat}, LON = {lon}")
-            else:
-                lat = existing_loc.get("lat", 40.3267)
-                lon = existing_loc.get("lon", -80.0171)
-                print(f"\u25B6 Using existing coordinates: LAT = {lat}, LON = {lon}")
-
             # --- Polling Interval ---
             print("\n\u25B6 Polling Interval")
             print("-" * 60)
@@ -299,205 +228,12 @@ async def setup_config():
                 carousel_images = 20
                 print("\u26A0 Limited to maximum of 20 images")
 
-            # --- Tomorrow.io Weather API Configuration ---
-            print("\n\u25B6 Tomorrow.io Weather API Configuration")
-            print("-" * 60)
-            existing_weather = existing_config.get("weather", {})
-
-            print("Tomorrow.io provides accurate weather data for your location")
-            print("Get your free API key at: https://www.tomorrow.io/weather-api/")
-            print("Free tier: 500 calls/day (plenty for weather updates)")
-
-            weather_config = {
-                "enabled": True,
-                "api_key": existing_weather.get("api_key", "")
-            }
-
-            weather_api_key = get_input_with_default("\nEnter Tomorrow.io API key",
-                                                     weather_config["api_key"] if weather_config["api_key"] else None)
-            while not weather_api_key:
-                print("\u26A0 Tomorrow.io API key is required for weather functionality")
-                print("Get a free key at: https://www.tomorrow.io/weather-api/")
-                weather_api_key = input("Enter Tomorrow.io API key: ").strip()
-
-            weather_config["api_key"] = weather_api_key
-            print("\u2705 Weather API configured successfully!")
-
-            # --- Radar Configuration ---
-            print("\n\u25B6 Weather Radar Configuration")
-            print("-" * 60)
-            existing_radar = existing_config.get("radar", {})
-
-            print("Animated weather radar (uses RainViewer API)")
-            print("Requires FREE Mapbox API key for base map")
-            print("Get your free API key at: https://account.mapbox.com/")
-
-            radar_config = {
-                "enabled": True,
-                "zoom": existing_radar.get("zoom", 7),
-                "frames": existing_radar.get("frames", 5),
-                "color": existing_radar.get("color", 2),
-                "smooth": existing_radar.get("smooth", 1),
-                "snow": existing_radar.get("snow", 1),
-                "mapbox_token": existing_radar.get("mapbox_token", ""),
-                "basemap_style": existing_radar.get("basemap_style", ""),
-                "overlay_style": existing_radar.get("overlay_style", "")
-            }
-
-            mapbox_token = get_input_with_default("\nEnter Mapbox API token",
-                                                  radar_config["mapbox_token"] if radar_config[
-                                                      "mapbox_token"] else None)
-            while not mapbox_token:
-                print("\u26A0 Mapbox API token is required for radar functionality")
-                print("Get a free token at: https://account.mapbox.com/")
-                mapbox_token = input("Enter Mapbox API token: ").strip()
-
-            radar_config["mapbox_token"] = mapbox_token
-
-            print("\n\u25B6 Radar Zoom Level")
-            print("  4  = Continental view")
-            print("  5  = Regional view (default)")
-            print(" 10  = Local view")
-            radar_config["zoom"] = get_input_with_default("\nZoom level", radar_config["zoom"], int)
-
-            print("\n\u25B6 Animation Frames")
-            print("Number of time steps to show (more = longer animation)")
-            print("  3 frames = 30 minutes of history")
-            print("  5 frames = 50 minutes of history (default)")
-            print("  8 frames = 80 minutes of history")
-            radar_config["frames"] = get_input_with_default("\nFrames", radar_config["frames"], int)
-
-            # --- Custom Mapbox Styles (Advanced/Optional) ---
-            print("\n\u25B6 Custom Mapbox Styles (Advanced - Optional)")
-            print("-" * 60)
-            print("Most users can skip this - default styles work great!")
-            print("\nOnly customize if you want a different map appearance.")
-            print("Examples: 'mapbox/dark-v11', 'mapbox/streets-v12', or your custom style")
-
-            use_custom = input("\nUse custom Mapbox styles? [y/N]: ").strip().upper()
-
-            if use_custom == 'Y':
-                print("\nEnter style IDs (leave blank to use defaults):")
-                basemap = get_input_with_default("  Base map style ID",
-                                                 radar_config["basemap_style"] if radar_config[
-                                                     "basemap_style"] else None)
-                if basemap:
-                    radar_config["basemap_style"] = basemap
-
-                overlay = get_input_with_default("  Overlay style ID",
-                                                 radar_config["overlay_style"] if radar_config[
-                                                     "overlay_style"] else None)
-                if overlay:
-                    radar_config["overlay_style"] = overlay
-
-                print("\u2705 Custom styles configured")
-            else:
-                print("\u2705 Using default Mapbox styles (recommended)")
-
-            print("\n\u2705 Radar configured successfully!")
-
-            # --- NWS Alert Configuration ---
-            print("\n\u25B6 NWS Weather Alert Configuration")
-            print("-" * 60)
-            existing_nws = existing_config.get("nws_alerts", {})
-
-            print("National Weather Service alerts for your location")
-            print("Displays severe weather warnings in real-time")
-            print("Find your zone at: https://www.weather.gov/")
-            print("Example zones: PAZ021 (Pittsburgh)")
-
-            nws_enabled = get_input_with_default(
-                "\nEnable NWS weather alerts? [Y/n]",
-                existing_nws.get("enabled", True),
-                bool
-            )
-
-            nws_zone = None
-            if nws_enabled:
-                nws_zone = get_input_with_default(
-                    "Enter NWS forecast zone (e.g., PAZ021)",
-                    existing_nws.get("zone", "")
-                )
-
-                if nws_zone:
-                    print(f"\nValidating zone '{nws_zone}'...")
-                    if validate_nws_zone(nws_zone):
-                        print("\u2705 Zone validated successfully!")
-                    else:
-                        print("\u26A0 Invalid NWS zone!")
-                        print("Zone must be 6 characters: 2 state letters + Z + 3 digits")
-                        print("Example: PAZ021")
-                        print("Find your zone at: https://www.weather.gov/")
-                        retry = input("\nTry another zone? [y/N]: ").strip().upper()
-                        if retry == 'Y':
-                            nws_zone = input("Enter NWS forecast zone: ").strip().upper()
-                            if not validate_nws_zone(nws_zone):
-                                print("\u26A0 Invalid zone, NWS alerts will be disabled")
-                                nws_enabled = False
-                                nws_zone = None
-                        else:
-                            nws_enabled = False
-                            nws_zone = None
-                else:
-                    print("\u26A0 No zone provided, NWS alerts disabled")
-                    nws_enabled = False
-
-            nws_config = {
-                "enabled": nws_enabled,
-                "zone": nws_zone if nws_zone else ""
-            }
-
-            if nws_enabled:
-                print(f"\n\u2705 NWS alerts configured for zone {nws_zone}")
-                print("Alerts will appear in the dashboard header")
-                print("Polling: Every 5 minutes (2 minutes when alerts active)")
-            else:
-                print("\n\u25B6 NWS alerts disabled")
-
-            # --- NHC Hurricane Alert Configuration (NEW) ---
-            print("\n\u25B6 NHC Hurricane Alert Configuration")
-            print("-" * 60)
-            existing_nhc = existing_config.get("nhc_alerts", {})
-
-            print("National Hurricane Center alerts for Atlantic basin hurricanes")
-            print("Automatically monitors at 5 AM, 11 AM, 5 PM, 11 PM")
-            print("Only Atlantic basin hurricanes are monitored")
-
-            nhc_enabled = get_input_with_default(
-                "\nEnable NHC hurricane alerts? [Y/n]",
-                existing_nhc.get("enabled", True),
-                bool
-            )
-
-            nhc_config = {
-                "enabled": nhc_enabled
-            }
-
-            if nhc_enabled:
-                print(f"\n\u2705 NHC hurricane monitoring enabled")
-                print("Alerts will appear alongside NWS alerts")
-                print("Monitoring: Atlantic basin hurricanes only")
-                print("Schedule: 5 AM, 11 AM, 5 PM, 11 PM")
-            else:
-                print("\n\u25B6 NHC alerts disabled")
-
             # --- Save Config ---
             config = {
                 "cameras": selected_cameras,
                 "poll_interval": poll_interval,
                 "max_days": max_days,
                 "carousel_images": carousel_images,
-                "location": {
-                    "city": city,
-                    "state": state,
-                    "display": location,
-                    "lat": lat,
-                    "lon": lon
-                },
-                "weather": weather_config,
-                "radar": radar_config,
-                "nws_alerts": nws_config,
-                "nhc_alerts": nhc_config  # NEW
             }
 
             with open(CONFIG_FILE, "w") as f:
@@ -511,21 +247,6 @@ async def setup_config():
             print(f"  Poll interval: {poll_minutes} minutes")
             print(f"  Image retention: {max_days} days")
             print(f"  Carousel images: {carousel_images}")
-            print(f"  Weather API: Tomorrow.io \u2713")
-            print(f"  Radar enabled: {radar_config['enabled']}")
-            if radar_config['enabled']:
-                print(f"    Zoom: {radar_config['zoom']}")
-                print(f"    Frames: {radar_config['frames']}")
-                print(f"    Data source: RainViewer API")
-                print(f"    Base map: Mapbox")
-            print(f"  NWS Alerts: {'Enabled' if nws_config['enabled'] else 'Disabled'}")
-            if nws_config['enabled']:
-                print(f"    Zone: {nws_config['zone']}")
-                print(f"    Polling: 5-min normal, 2-min active")
-            print(f"  NHC Alerts: {'Enabled' if nhc_config['enabled'] else 'Disabled'}")
-            if nhc_config['enabled']:
-                print(f"    Monitoring: Atlantic basin hurricanes")
-                print(f"    Schedule: 5 AM, 11 AM, 5 PM, 11 PM")
             print("=" * 60)
 
         except Exception as e:
