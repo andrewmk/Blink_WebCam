@@ -6,6 +6,28 @@ All notable changes to Blink WebCam Monitor are documented here.
 
 ## [Unreleased]
 
+### Added
+
+- **Locale-aware dashboard display** -- the web server detects the machine's
+  locale settings (timezone from the `TZ` env var or the `/etc/localtime`
+  symlink, locale from `LC_ALL`/`LC_TIME`/`LANGUAGE`/`LANG` with an `en-US`
+  fallback, temperature unit from the locale region -- US, Liberia and
+  Myanmar use °F, everything else °C) and passes them to the page via
+  `window.BlinkConfig`. All times on the page (header clock, camera image
+  timestamps, refresh timestamps, snooze "Until" badge and modal expiry)
+  now render in the locale's date format with a **24-hour clock**, and
+  camera temperatures show a unit symbol (e.g. `72°F` or `22°C`).
+  Formatting happens client-side in a new `static/js/format.js` (the page's
+  single formatting point); API timestamps are now offset-aware ISO strings
+  so the display stays correct regardless of the browser's own timezone.
+
+### Changed
+
+- `alert_snooze.json` entries are stored as offset-aware ISO strings; legacy
+  naive entries still parse and are treated as local time
+- `/api/cameras/refresh` no longer returns the server-formatted US-style
+  `last_update_formatted`; the client formats `last_update` itself
+
 ### Removed
 
 - **Weather and alert widgets from the dashboard** -- the weather card
