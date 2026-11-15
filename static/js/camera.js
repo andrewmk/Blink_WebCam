@@ -122,7 +122,7 @@ document.addEventListener('click', function(e) {
 // ============================================================================
 
 function updateImageTimestamp(cameraName, filename) {
-    const el = document.getElementById(`timestamp-${cameraName}`);
+    const el = document.getElementById(`overlay-time-${cameraName}`);
     if (!el) return;
 
     // Extract from path if it contains date folder (e.g., "2025-01-23/camera_20250123_120000.jpg")
@@ -133,23 +133,17 @@ function updateImageTimestamp(cameraName, filename) {
 
     const match = filenameOnly.match(/_(\d{8})_(\d{6})/);
     if (match) {
+        // Wall-clock time captured on the machine (no timezone info in the
+        // filename), rendered zero-padded 24-hour straight from the filename
+        // components: "2025-01-23 12:00:00".
         const dateStr = match[1]; // YYYYMMDD
         const timeStr = match[2]; // HHMMSS
-
-        const year = dateStr.substring(0, 4);
-        const month = dateStr.substring(4, 6);
-        const day = dateStr.substring(6, 8);
-
-        const hours = parseInt(timeStr.substring(0, 2));
-        const minutes = timeStr.substring(2, 4);
-        const seconds = timeStr.substring(4, 6);
-
-        // Wall-clock time captured on the machine (no timezone info in the
-        // filename), rendered in the machine locale with a 24-hour clock.
-        const imageTime = new Date(year, month - 1, day, hours, minutes, seconds);
-        el.textContent = window.formatDateTime.wallDateTime(imageTime);
+        el.textContent =
+            dateStr.substring(0, 4) + '-' + dateStr.substring(4, 6) + '-' + dateStr.substring(6, 8) +
+            ' ' + timeStr.substring(0, 2) + ':' + timeStr.substring(2, 4) + ':' + timeStr.substring(4, 6);
+        el.style.display = '';
     } else {
-        el.textContent = 'Unknown time';
+        el.style.display = 'none';
     }
 }
 

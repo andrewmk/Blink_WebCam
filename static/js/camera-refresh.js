@@ -61,17 +61,6 @@ async function refreshCameras() {
 
             console.log(`Processing camera: ${camera.name}`);
 
-            // Update timestamp (offset-aware ISO, rendered in the machine locale)
-            const timestampEl = document.getElementById(`timestamp-${camera.normalized_name}`);
-            if (timestampEl && camera.last_update) {
-                const displayedTimestamp = window.formatDateTime.dateTime(camera.last_update);
-                const oldTimestamp = timestampEl.textContent;
-                timestampEl.textContent = displayedTimestamp;
-                if (oldTimestamp !== displayedTimestamp) {
-                    console.log(`  ✓ Timestamp updated: ${displayedTimestamp}`);
-                }
-            }
-
             // Update temperature
             updateTemperature(camera, card);
 

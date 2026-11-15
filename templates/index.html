@@ -111,7 +111,6 @@
 
         <div class="camera-header">
             {{ camera.name }}
-            <div class="camera-timestamp" id="timestamp-{{ camera.normalized_name }}"></div>
         </div>
 
         <div class="camera-image-container">
@@ -148,6 +147,9 @@
             </button>
 
             {% if camera.images %}
+            {# Overlay chips: camera name (top-left) and active image's capture time (top-right) #}
+            <div class="image-overlay image-overlay-name">{{ camera.name }}</div>
+            <div class="image-overlay image-overlay-time" id="overlay-time-{{ camera.normalized_name }}"></div>
                 {% for image in camera.images %}
                 <img src="/image/{{ camera.normalized_name }}/{{ image }}"
                      alt="{{ camera.name }}"

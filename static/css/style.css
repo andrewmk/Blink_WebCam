@@ -270,6 +270,10 @@ body {
     box-shadow: 0 2px 8px rgba(0,0,0,0.3);
 }
 
+.camera-card:not(.offline) .snooze-badge {
+    top: 48px;
+}
+
 .snooze-icon-btn {
     position: absolute;
     bottom: 10px;
@@ -542,13 +546,6 @@ h1 {
     font-weight: bold;
 }
 
-.camera-timestamp {
-    font-size: clamp(0.7em, 1.8vw, 0.85em);
-    color: #f0f0f0;
-    margin-top: 4px;
-    font-weight: normal;
-}
-
 .offline-badge {
     position: absolute;
     top: 10px;
@@ -582,6 +579,34 @@ h1 {
 }
 
 .camera-image.active { display: block; }
+
+.image-overlay {
+    position: absolute;
+    top: 10px;
+    z-index: 5;
+    padding: 3px 8px;
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.35);
+    color: #ffffff;
+    font-size: clamp(0.7em, 1.6vw, 1em);
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    line-height: 1.4;
+    pointer-events: none;
+}
+
+.image-overlay-name {
+    left: 10px;
+}
+
+.image-overlay-time {
+    right: 10px;
+    font-variant-numeric: tabular-nums;
+}
+
+.camera-card.offline .image-overlay {
+    display: none;
+}
 
 .image-nav {
     position: absolute;
@@ -857,5 +882,5 @@ footer {
 
 /* If camera is both stale AND snoozed */
 .camera-card.stale-images.snoozed .stale-badge {
-    top: 80px; /* Move below snooze badge */
+    top: 96px; /* Move below snooze badge (itself shifted down by the name chip) */
 }
