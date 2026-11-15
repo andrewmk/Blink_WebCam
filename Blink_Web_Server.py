@@ -8,15 +8,11 @@ from aiohttp import ClientSession
 from blinkpy.blinkpy import Blink
 from blinkpy.auth import Auth
 from blinkpy.helpers.util import BlinkURLHandler
-import requests
 import logging
-import threading
 import time
 
 from alert_snooze import AlertSnooze, SNOOZE_DURATIONS
 from log_rotation import LogRotator
-from nws_alerts import NWSAlerts, validate_nws_zone
-from nhc_alerts import NHCAlerts  # NEW
 
 app = Flask(__name__)
 
@@ -36,21 +32,6 @@ log_rotator = LogRotator(LOG_FOLDER, max_backups=5)
 # Define log file paths
 WEBSERVER_LOG_FOLDER = log_rotator.get_system_log_folder("webserver")
 PERF_LOG_FOLDER = log_rotator.get_system_log_folder("webserver-perf")
-NWS_LOG_FOLDER = log_rotator.get_system_log_folder("nws-alerts")
-NHC_LOG_FOLDER = log_rotator.get_system_log_folder("nhc-alerts")  # NEW
-
-# Weather caching
-weather_cache = {
-    'data': None,
-    'timestamp': None,
-    'lock': threading.Lock()
-}
-
-WEATHER_CACHE_DURATION = 30 * 60  # 30 minutes in seconds
-
-# Weather Alert Monitors (global)
-nws_monitor = None
-nhc_monitor = None  # NEW
 
 
 # ============================================================================
@@ -102,24 +83,6 @@ def log_web_error(msg: str, exception: Exception = None):
 def log_web_performance(msg: str):
     log_rotator.check_and_rotate_if_needed()
     log_file = get_current_log_file(PERF_LOG_FOLDER, "webserver-perf")
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    with open(log_file, "a", encoding="utf-8") as f:
-        f.write(f"{timestamp} | {msg}\n")
-
-
-def log_nws(msg: str):
-    """Log NWS alert events to system/nws-alerts/nws-alerts_YYYY-MM-DD.log"""
-    log_rotator.check_and_rotate_if_needed()
-    log_file = get_current_log_file(NWS_LOG_FOLDER, "nws-alerts")
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    with open(log_file, "a", encoding="utf-8") as f:
-        f.write(f"{timestamp} | {msg}\n")
-
-
-def log_nhc(msg: str):
-    """Log NHC hurricane events to system/nhc-alerts/nhc-alerts_YYYY-MM-DD.log"""
-    log_rotator.check_and_rotate_if_needed()
-    log_file = get_current_log_file(NHC_LOG_FOLDER, "nhc-alerts")
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     with open(log_file, "a", encoding="utf-8") as f:
         f.write(f"{timestamp} | {msg}\n")
@@ -281,18 +244,6 @@ def detect_camera_issues(camera_folder: Path, camera_name: str, images: list) ->
     return alerts
 
 
-def map_weather_code(code):
-    """Map Tomorrow.io weather codes to descriptive text"""
-    weather_codes = {
-        0: "Unknown", 1000: "Clear", 1001: "Cloudy", 1100: "Mostly Clear",
-        1101: "Partly Cloudy", 1102: "Mostly Cloudy", 2000: "Fog",
-        2100: "Light Fog", 4000: "Drizzle", 4001: "Rain", 4200: "Light Rain",
-        4201: "Heavy Rain", 5000: "Snow", 5001: "Flurries", 5100: "Light Snow",
-        5101: "Heavy Snow", 8000: "Thunderstorm"
-    }
-    return weather_codes.get(code, "Unknown")
-
-
 # ============================================================================
 # BLINK API FUNCTIONS
 # ============================================================================
@@ -359,58 +310,6 @@ async def set_blink_arm_state(arm: bool):
 
 
 # ============================================================================
-# NWS ALERT INITIALIZATION
-# ============================================================================
-
-def start_nws_monitoring():
-    global nws_monitor
-    try:
-        with open(CONFIG_FILE, "r") as f:
-            config = json.load(f)
-
-        nws_config = config.get("nws_alerts", {})
-        if not nws_config.get("enabled"):
-            log_web("NWS alerts disabled")
-            return
-
-        zone = nws_config.get("zone")
-        if not zone:
-            log_web("NWS enabled but no zone configured")
-            return
-
-        nws_monitor = NWSAlerts(zone=zone, log_function=log_nws)
-        nws_monitor.start_polling_thread()
-        log_web(f"NWS alert monitoring started for zone {zone}")
-
-    except Exception as e:
-        log_web_error("Failed to start NWS monitoring", e)
-
-
-# ============================================================================
-# NHC ALERT INITIALIZATION (NEW)
-# ============================================================================
-
-def start_nhc_monitoring():
-    """Start NHC hurricane monitoring"""
-    global nhc_monitor
-    try:
-        with open(CONFIG_FILE, "r") as f:
-            config = json.load(f)
-
-        nhc_config = config.get("nhc_alerts", {})
-        if not nhc_config.get("enabled"):
-            log_web("NHC alerts disabled")
-            return
-
-        nhc_monitor = NHCAlerts(log_function=log_nhc)
-        nhc_monitor.start_polling_thread()
-        log_web("NHC hurricane monitoring started")
-
-    except Exception as e:
-        log_web_error("Failed to start NHC monitoring", e)
-
-
-# ============================================================================
 # FLASK ROUTES
 # ============================================================================
 
@@ -422,7 +321,6 @@ def index():
 
         cameras_list = config.get("cameras", [])
         carousel_images = config.get("carousel_images", 5)
-        location = config.get("location", {})
 
         cameras = []
         for cam_name in cameras_list:
@@ -455,7 +353,6 @@ def index():
         response = make_response(render_template('index.html',
                                cameras=cameras,
                                config=config,
-                               location=location,
                                all_snoozed=all_snoozed))
         
         response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
@@ -497,78 +394,6 @@ def serve_image(camera_name, image_path):
     except Exception as e:
         log_web_error(f"Error serving image: {camera_name}/{image_path}", e)
         return str(e), 500
-
-
-@app.route('/api/weather')
-def api_weather():
-    start_time = time.time()
-    try:
-        with open(CONFIG_FILE, "r") as f:
-            config = json.load(f)
-
-        weather_config = config.get("weather", {})
-        location = config.get("location", {})
-
-        if not weather_config.get("enabled") or not weather_config.get("api_key"):
-            return jsonify({"error": "Weather not configured"}), 400
-
-        with weather_cache['lock']:
-            if weather_cache['data'] and weather_cache['timestamp']:
-                age = time.time() - weather_cache['timestamp']
-                if age < WEATHER_CACHE_DURATION:
-                    log_web_performance(f"weather_cache_hit | {time.time() - start_time:.2f}s")
-                    return jsonify(weather_cache['data'])
-
-        api_key = weather_config["api_key"]
-        lat = location.get("lat", 40.3267)
-        lon = location.get("lon", -80.0171)
-
-        url = f"https://api.tomorrow.io/v4/weather/realtime?location={lat},{lon}&apikey={api_key}"
-        response = requests.get(url, timeout=10)
-        response.raise_for_status()
-
-        data = response.json()
-        weather_code = data["data"]["values"].get("weatherCode", 0)
-        weather_desc = map_weather_code(weather_code)
-
-        weather_data = {
-            "current_condition": [{
-                "temp_F": round(data["data"]["values"]["temperature"] * 9 / 5 + 32),
-                "FeelsLikeF": round(data["data"]["values"]["temperatureApparent"] * 9 / 5 + 32),
-                "humidity": data["data"]["values"]["humidity"],
-                "weatherDesc": [{"value": weather_desc}]
-            }]
-        }
-
-        with weather_cache['lock']:
-            weather_cache['data'] = weather_data
-            weather_cache['timestamp'] = time.time()
-
-        log_web_performance(f"weather_api_call | {time.time() - start_time:.2f}s")
-        return jsonify(weather_data)
-
-    except Exception as e:
-        log_web_error("Weather API error", e)
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route('/api/radar/config')
-def api_radar_config():
-    try:
-        with open(CONFIG_FILE, "r") as f:
-            config = json.load(f)
-
-        radar_config = config.get("radar", {})
-        location = config.get("location", {})
-
-        radar_config["lat"] = location.get("lat", 40.3267)
-        radar_config["lon"] = location.get("lon", -80.0171)
-
-        return jsonify({"success": True, "radar_config": radar_config})
-
-    except Exception as e:
-        log_web_error("Error loading radar config", e)
-        return jsonify({"success": False, "error": str(e)}), 500
 
 
 @app.route('/api/arm/status')
@@ -753,71 +578,6 @@ def api_cameras_refresh():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
-@app.route('/api/nws/config')
-def api_nws_config():
-    with open(CONFIG_FILE, "r") as f:
-        config = json.load(f)
-
-    nws_config = config.get("nws_alerts", {})
-    has_alerts = nws_monitor.get_alert_data().get("alert_active", False) if nws_monitor else False
-
-    return jsonify({
-        "success": True,
-        "enabled": nws_config.get("enabled", False),
-        "zone": nws_config.get("zone", ""),
-        "has_alerts": has_alerts
-    })
-
-
-@app.route('/api/nws/alerts')
-def api_nws_alerts():
-    if not nws_monitor:
-        return jsonify({
-            "success": True,
-            "alerts": [],
-            "alert_active": False
-        })
-
-    return jsonify({
-        "success": True,
-        **nws_monitor.get_alert_data()
-    })
-
-
-# ============================================================================
-# NHC API ENDPOINTS (NEW)
-# ============================================================================
-
-@app.route('/api/nhc/config')
-def api_nhc_config():
-    with open(CONFIG_FILE, "r") as f:
-        config = json.load(f)
-
-    nhc_config = config.get("nhc_alerts", {})
-    has_hurricanes = nhc_monitor.get_alert_data().get("alert_active", False) if nhc_monitor else False
-
-    return jsonify({
-        "success": True,
-        "enabled": nhc_config.get("enabled", False),
-        "has_hurricanes": has_hurricanes
-    })
-
-
-@app.route('/api/nhc/alerts')
-def api_nhc_alerts():
-    if not nhc_monitor:
-        return jsonify({
-            "success": True,
-            "hurricanes": [],
-            "alert_active": False
-        })
-
-    return jsonify({
-        "success": True,
-        **nhc_monitor.get_alert_data()
-    })
-
-
 # ============================================================================
 # MAIN
 # ============================================================================
@@ -826,20 +586,14 @@ if __name__ == '__main__':
     LOG_FOLDER.mkdir(parents=True, exist_ok=True)
     WEBSERVER_LOG_FOLDER.mkdir(parents=True, exist_ok=True)
     PERF_LOG_FOLDER.mkdir(parents=True, exist_ok=True)
-    NWS_LOG_FOLDER.mkdir(parents=True, exist_ok=True)
-    NHC_LOG_FOLDER.mkdir(parents=True, exist_ok=True)  # NEW
 
     log_rotator.start_midnight_rotation_thread()
-    start_nws_monitoring()
-    start_nhc_monitoring()  # NEW
 
     log_web("=" * 60)
     log_web("BLINK WEB SERVER STARTING (WITH CACHE-BUSTING)")
     log_web("=" * 60)
     log_web(f"Web server log: {get_current_log_file(WEBSERVER_LOG_FOLDER, 'webserver')}")
     log_web(f"Performance log: {get_current_log_file(PERF_LOG_FOLDER, 'webserver-perf')}")
-    log_web(f"NWS alerts log: {get_current_log_file(NWS_LOG_FOLDER, 'nws-alerts')}")
-    log_web(f"NHC alerts log: {get_current_log_file(NHC_LOG_FOLDER, 'nhc-alerts')}")  # NEW
     log_web("=" * 60)
 
     from waitress import serve
