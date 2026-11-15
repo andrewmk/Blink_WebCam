@@ -63,6 +63,15 @@
     </div>
 </div>
 
+<!-- Image Lightbox -->
+<div class="lightbox" id="lightbox" aria-hidden="true">
+    <img class="lightbox-image" id="lightbox-image" alt="">
+    <div class="lightbox-caption" id="lightbox-caption"></div>
+    <button class="lightbox-close" id="lightbox-close" title="Close" aria-label="Close">&times;</button>
+    <button class="lightbox-nav lightbox-nav-prev" id="lightbox-prev" title="Previous photo" aria-label="Previous photo">&#x2039;</button>
+    <button class="lightbox-nav lightbox-nav-next" id="lightbox-next" title="Next photo" aria-label="Next photo">&#x203A;</button>
+</div>
+
 <!-- Alert Banner -->
 <div class="alert-banner" id="alert-banner"></div>
 
@@ -224,6 +233,7 @@ console.log('BlinkConfig loaded:', window.BlinkConfig);
 <!-- Load JavaScript modules IN ORDER -->
 <script src="{{ url_for('static', filename='js/format.js') }}"></script>
 <script src="{{ url_for('static', filename='js/camera.js') }}"></script>
+<script src="{{ url_for('static', filename='js/lightbox.js') }}"></script>
 <script src="{{ url_for('static', filename='js/snooze.js') }}"></script>
 <script src="{{ url_for('static', filename='js/camera-refresh.js') }}"></script>
 <script src="{{ url_for('static', filename='js/main.js') }}"></script>
