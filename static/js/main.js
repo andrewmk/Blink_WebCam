@@ -218,6 +218,4 @@ document.addEventListener('DOMContentLoaded', function() {
 setInterval(loadArmStatus, 10000);
 
 // NOTE: Camera auto-refresh is handled by camera-refresh.js
-// Weather refreshes at :00 and :30 via weather.js
-// Radar auto-refreshes via radar.js
 // Full page reload is NO LONGER NEEDED
