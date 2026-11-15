@@ -140,18 +140,14 @@ function updateImageTimestamp(cameraName, filename) {
         const month = dateStr.substring(4, 6);
         const day = dateStr.substring(6, 8);
 
-        let hours = parseInt(timeStr.substring(0, 2));
+        const hours = parseInt(timeStr.substring(0, 2));
         const minutes = timeStr.substring(2, 4);
         const seconds = timeStr.substring(4, 6);
 
-        const ampm = hours >= 12 ? 'PM' : 'AM';
-        hours = hours % 12;
-        hours = hours ? hours : 12;
-
-        const formattedTime = `${hours}:${minutes}:${seconds} ${ampm}`;
-        const formattedDate = `${month}/${day}/${year}`;
-
-        el.textContent = `${formattedDate} ${formattedTime}`;
+        // Wall-clock time captured on the machine (no timezone info in the
+        // filename), rendered in the machine locale with a 24-hour clock.
+        const imageTime = new Date(year, month - 1, day, hours, minutes, seconds);
+        el.textContent = window.formatDateTime.wallDateTime(imageTime);
     } else {
         el.textContent = 'Unknown time';
     }

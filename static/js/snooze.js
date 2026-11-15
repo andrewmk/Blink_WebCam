@@ -34,7 +34,7 @@ async function openSnoozeModal(cameraName, cameraDisplay) {
         currentSnoozeStatus = status;
 
         if (status.is_snoozed) {
-            document.getElementById('snooze-expiry-time').textContent = status.snooze_until_full;
+            document.getElementById('snooze-expiry-time').textContent = window.formatDateTime.dateTime(status.snooze_until);
             document.getElementById('snooze-status-display').style.display = 'block';
             document.getElementById('snooze-cancel-btn').style.display = 'block';
         } else {
@@ -323,7 +323,7 @@ async function refreshSnoozeBadges() {
                     newBadge.id = `snooze-badge-${cam}`;
                     newBadge.dataset.expiry = status.snooze_until;
                     newBadge.innerHTML = `
-                        &#x1F515; Until ${status.snooze_until_full}<br>
+                        &#x1F515; Until <span id="snooze-until-${cam}"></span><br>
                         <span id="snooze-countdown-${cam}" style="font-size: 0.9em;">${status.minutes_remaining}m left</span>
                     `;
                     card.querySelector('.camera-image-container').prepend(newBadge);
@@ -352,9 +352,15 @@ async function refreshSnoozeBadges() {
 function updateSnoozeCountdowns() {
     document.querySelectorAll('.snooze-badge[data-expiry]').forEach(badge => {
         const cameraName = badge.id.replace('snooze-badge-', '');
-        const countdownSpan = document.getElementById(`snooze-countdown-${cameraName}`);
         const expiryISO = badge.dataset.expiry;
 
+        // Fill the locale-formatted "Until" time (24h clock)
+        const untilSpan = document.getElementById(`snooze-until-${cameraName}`);
+        if (untilSpan && expiryISO) {
+            untilSpan.textContent = window.formatDateTime.dateTime(expiryISO);
+        }
+
+        const countdownSpan = document.getElementById(`snooze-countdown-${cameraName}`);
         if (!countdownSpan || !expiryISO) return;
 
         const expiry = new Date(expiryISO);

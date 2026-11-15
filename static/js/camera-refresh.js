@@ -61,13 +61,14 @@ async function refreshCameras() {
 
             console.log(`Processing camera: ${camera.name}`);
 
-            // Update timestamp
+            // Update timestamp (offset-aware ISO, rendered in the machine locale)
             const timestampEl = document.getElementById(`timestamp-${camera.normalized_name}`);
-            if (timestampEl && camera.last_update_formatted) {
+            if (timestampEl && camera.last_update) {
+                const displayedTimestamp = window.formatDateTime.dateTime(camera.last_update);
                 const oldTimestamp = timestampEl.textContent;
-                timestampEl.textContent = camera.last_update_formatted;
-                if (oldTimestamp !== camera.last_update_formatted) {
-                    console.log(`  ✓ Timestamp updated: ${camera.last_update_formatted}`);
+                timestampEl.textContent = displayedTimestamp;
+                if (oldTimestamp !== displayedTimestamp) {
+                    console.log(`  ✓ Timestamp updated: ${displayedTimestamp}`);
                 }
             }
 
@@ -124,10 +125,12 @@ function updateTemperature(camera, card) {
     if (!tempEl || !tempStat) return;
 
     const oldTemp = tempEl.textContent;
-    tempEl.textContent = camera.temperature;
+    const displayedTemp = window.formatTempF(camera.temperature);
+    tempEl.textContent = displayedTemp;
+    // Keep the raw °F value for the alert thresholds
     tempStat.setAttribute('data-temperature', camera.temperature);
 
-    // Recheck temperature alerts
+    // Recheck temperature alerts (thresholds are °F)
     const temp = parseTemperature(camera.temperature);
     tempStat.classList.remove('alert', 'critical');
 
@@ -135,18 +138,18 @@ function updateTemperature(camera, card) {
         if (temp >= window.BlinkConfig.TEMP_HOT_THRESHOLD) {
             tempStat.classList.add('alert');
             if (!tempEl.textContent.includes('🔥')) {
-                tempEl.innerHTML = '&#x1F525; ' + camera.temperature;
+                tempEl.innerHTML = '&#x1F525; ' + displayedTemp;
             }
         } else if (temp <= window.BlinkConfig.TEMP_COLD_THRESHOLD) {
             tempStat.classList.add('alert');
             if (!tempEl.textContent.includes('❄')) {
-                tempEl.innerHTML = '&#x2744;&#xFE0F; ' + camera.temperature;
+                tempEl.innerHTML = '&#x2744;&#xFE0F; ' + displayedTemp;
             }
         }
     }
 
-    if (oldTemp !== camera.temperature) {
-        console.log(`  ✓ Temperature updated: ${camera.temperature}`);
+    if (oldTemp !== displayedTemp) {
+        console.log(`  ✓ Temperature updated: ${displayedTemp}`);
     }
 }
 

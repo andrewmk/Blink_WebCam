@@ -122,17 +122,7 @@ async function toggleArm() {
 // ============================================================================
 
 function updateTime() {
-    const now = new Date();
-    document.getElementById('current-time').textContent = now.toLocaleString('en-US', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        timeZone: 'America/New_York'
-    });
+    document.getElementById('current-time').textContent = window.formatDateTime.clock(new Date());
 }
 
 updateTime();
@@ -204,11 +194,28 @@ function checkTemperatureLevels() {
 }
 
 // ============================================================================
+// CAMERA TEMPERATURE DISPLAY
+// ============================================================================
+
+// Convert the server's raw °F values to the locale's unit (with symbol).
+// Runs before the alert checks, which prepend icons to the displayed text.
+function initCameraTemps() {
+    document.querySelectorAll('[data-temperature]').forEach(statDiv => {
+        const raw = statDiv.getAttribute('data-temperature');
+        const valueDiv = statDiv.querySelector('.stat-value');
+        if (valueDiv) {
+            valueDiv.textContent = window.formatTempF(raw);
+        }
+    });
+}
+
+// ============================================================================
 // PAGE INITIALIZATION
 // ============================================================================
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
+    initCameraTemps();
     checkBatteryLevels();
     checkTemperatureLevels();
     loadArmStatus();
