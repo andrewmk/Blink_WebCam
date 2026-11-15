@@ -1,6 +1,7 @@
 from flask import Flask, render_template, send_file, jsonify, request, make_response
 from pathlib import Path
 import json
+import os
 import socket
 from datetime import datetime, timedelta
 import asyncio
@@ -106,6 +107,49 @@ def get_local_ip():
 
 def normalize_camera_name(cam_name: str) -> str:
     return cam_name.lower().replace(" ", "-")
+
+
+def get_locale_settings() -> dict:
+    """Detect the machine's locale settings for the web page.
+
+    Returns a dict with:
+      - locale: BCP-47 tag (e.g. "de-DE"), from LC_ALL/LC_TIME/LANGUAGE/LANG, fallback "en-US"
+      - timezone: IANA zone name (e.g. "America/New_York") or None if undetectable
+      - temperature_unit: "F" for imperial regions (US, Liberia, Myanmar), else "C"
+    """
+    # Timezone: TZ env var first, else the /etc/localtime symlink target
+    timezone = os.environ.get("TZ", "").lstrip(":") or None
+    if not timezone:
+        try:
+            localtime = os.path.realpath("/etc/localtime")
+            if "zoneinfo" in localtime:
+                zone = localtime.rsplit("zoneinfo/", 1)[-1]
+                if zone.startswith("right/"):
+                    zone = zone[len("right/"):]
+                if zone:
+                    timezone = zone
+        except Exception as e:
+            log_web_error("Could not detect system timezone", e)
+            timezone = None
+
+    # Locale: first token, charset stripped, underscored form normalized to BCP-47
+    raw_locale = (os.environ.get("LC_ALL") or os.environ.get("LC_TIME")
+                  or os.environ.get("LANGUAGE") or os.environ.get("LANG") or "")
+    locale_tag = raw_locale.split(":")[0].strip().split(".")[0]
+    if locale_tag.lower() in ("", "c", "posix"):
+        locale_tag = "en-US"
+    else:
+        locale_tag = locale_tag.replace("_", "-")
+
+    # Temperature unit: derived from the locale region
+    region = locale_tag.split("-")[-1].upper() if "-" in locale_tag else ""
+    temperature_unit = "F" if region in ("US", "LR", "MY") else "C"
+
+    return {
+        "locale": locale_tag,
+        "timezone": timezone,
+        "temperature_unit": temperature_unit
+    }
 
 
 def wifi_bars(dbm):
@@ -353,7 +397,8 @@ def index():
         response = make_response(render_template('index.html',
                                cameras=cameras,
                                config=config,
-                               all_snoozed=all_snoozed))
+                               all_snoozed=all_snoozed,
+                               locale_settings=get_locale_settings()))
         
         response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
         response.headers['Pragma'] = 'no-cache'
@@ -534,14 +579,16 @@ def api_cameras_refresh():
             status = read_camera_status(cam_folder)
 
             last_update = None
-            last_update_formatted = None
             
             if images:
                 newest_image_path = cam_folder / images[0]
                 if newest_image_path.exists():
                     try:
-                        last_update = datetime.fromtimestamp(newest_image_path.stat().st_mtime)
-                        last_update_formatted = last_update.strftime("%m/%d/%Y %I:%M:%S %p")
+                        # Offset-aware ISO so the client can render it in the
+                        # machine's timezone regardless of the browser's.
+                        last_update = datetime.fromtimestamp(
+                            newest_image_path.stat().st_mtime
+                        ).astimezone().isoformat()
                     except Exception as e:
                         log_web_error(f"Error getting timestamp for {newest_image_path}", e)
 
@@ -552,8 +599,7 @@ def api_cameras_refresh():
                 "temperature": status["temperature"],
                 "battery": status["battery"],
                 "wifi": wifi_bars(status["wifi_strength"]),
-                "last_update": last_update.isoformat() if last_update else None,
-                "last_update_formatted": last_update_formatted,
+                "last_update": last_update,
                 "alerts": alerts
             })
 
@@ -597,4 +643,4 @@ if __name__ == '__main__':
     log_web("=" * 60)
 
     from waitress import serve
-    serve(app, host='0.0.0.0', port=5000, threads=6)
+    serve(app, host='0.0.0.0', port=5000, threads=6)
