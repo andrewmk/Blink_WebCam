@@ -11,6 +11,9 @@ title: Blink Web Cam — photo store and dashboard image display
   dashboard must let the viewer tell **which camera** and **when** each displayed photo is.
   A downed camera must stay identifiable — the name shows in every card state,
   including offline.
+- Card photos are small grid thumbnails; when a viewer needs detail (a face, an
+  object, a plate) they need a full-size view of the same photo without leaving
+  the dashboard.
 - The saved files must stay raw camera bytes — the user explicitly declined burning any
   overlay into the JPEGs ("just overlay in html on the images when displayed on the web
   page"), so photos archived, moved, or shared off-machine are unchanged.
@@ -38,6 +41,18 @@ title: Blink Web Cam — photo store and dashboard image display
   it clears the name chip; the stale badge cascade (top:96px) sits below it. Top-right
   additionally stacks the offline/duplicate badges below the time chip; bottom-center is
   the carousel dots, bottom-right the snooze button.
+- **Click-to-zoom lightbox.** Clicking a card photo opens a full-viewport overlay
+  showing that same photo nearly full size. It is still presentation-only: a separate
+  `<img>` reusing the card's own `/image/...` URL — no new server route, no
+  re-encoding. The overlay's bottom caption repeats the card's name and zero-padded
+  capture time (the chip's format, not the locale helpers), so the "which camera, when"
+  promise holds at full size. Dismissal is three-way by user choice: close X
+  (top-right), backdrop click, or Esc. Prev/next arrows plus touch swipe step through
+  that camera's carousel photos (arrows hidden for single-photo cameras); the lightbox
+  **snapshots** the photo list at open, so a background refresh cannot disturb the photo
+  being viewed (old files stay on disk, their URLs keep serving), while the card's own
+  carousel keeps cycling underneath. Layering: the lightbox (z-index 3000) sits above
+  the snooze modals (2000) and the alert banner (1000).
 
 ## Invariants
 
@@ -51,3 +66,5 @@ title: Blink Web Cam — photo store and dashboard image display
 
 - Burning overlays into new or existing saved photos (explicitly declined by the user).
 - Server-side per-image timestamps in the API — the filename already carries the time.
+- A separate full-resolution or downloadable photo variant for the lightbox — it serves
+  the same file the card shows.

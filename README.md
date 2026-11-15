@@ -29,6 +29,7 @@ A self-hosted, real-time camera surveillance dashboard for Blink cameras. Automa
 - Connects to your Blink camera account and takes snapshots from all configured cameras on a schedule (default every 5 minutes)
 - Stores photos organized by camera and date
 - Serves a local web dashboard showing live camera images, temperature, battery, and WiFi signal for each camera
+- Click-to-zoom photo lightbox: click any camera photo to view it nearly full screen, with prev/next arrows through the recent photos and a close X to dismiss
 - Supports arm/disarm of your Blink system from the dashboard
 - Supports per-camera alert snoozing
 - Automatically cleans up old photos and logs based on configurable retention settings
@@ -381,6 +382,7 @@ Blink_WebCam/
 │   └── js/
 │       ├── main.js          # Core app logic, theme, arm toggle
 │       ├── camera.js        # Camera carousel management
+│       ├── lightbox.js      # Click-to-zoom photo lightbox
 │       ├── camera-refresh.js # Background camera data refresh
 │       └── snooze.js        # Alert snooze functionality
 ├── cameras/                 # Auto-created — stores camera photos

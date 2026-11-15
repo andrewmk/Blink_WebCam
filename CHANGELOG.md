@@ -8,6 +8,16 @@ All notable changes to Blink WebCam Monitor are documented here.
 
 ### Added
 
+- **Click-to-zoom photo lightbox** -- clicking a camera's photo on the dashboard
+  now opens a lightbox that shows it nearly full screen against a dark backdrop,
+  with the camera name and capture time (same zero-padded format as the card's
+  time chip) in a caption below. Dismiss with the close X in the top-right
+  corner, a click on the dark backdrop, or the Esc key. Cameras with multiple
+  carousel photos get prev/next arrows (plus touch swipe) to step through the
+  photos without closing; the lightbox freezes on the photo you clicked, so a
+  background refresh can't change what you're looking at. Card photos now show a
+  zoom-in cursor to signal they are clickable. Front-end only: the lightbox
+  reuses the existing `/image/...` URLs, so no server changes.
 - **Locale-aware dashboard display** -- the web server detects the machine's
   locale settings (timezone from the `TZ` env var or the `/etc/localtime`
   symlink, locale from `LC_ALL`/`LC_TIME`/`LANGUAGE`/`LANG` with an `en-US`
