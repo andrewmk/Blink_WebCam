@@ -1,6 +1,6 @@
 # Blink WebCam Monitor
 
-A self-hosted, real-time camera surveillance dashboard for Blink cameras. Automatically takes snapshots on a configurable schedule and displays them in a web browser with weather, radar, NWS weather alerts, and NHC hurricane alerts.
+A self-hosted, real-time camera surveillance dashboard for Blink cameras. Automatically takes snapshots on a configurable schedule and displays them in a web browser.
 
 ![Dashboard](https://img.shields.io/badge/status-stable-brightgreen)
 
@@ -18,10 +18,9 @@ A self-hosted, real-time camera surveillance dashboard for Blink cameras. Automa
 8. [Configuration](#configuration)
 9. [Running Manually](#running-manually)
 10. [Autostart on Boot](#autostart-on-boot)
-11. [API Keys](#api-keys)
-12. [File Structure](#file-structure)
-13. [Restarting the Services](#restarting-the-services)
-14. [Troubleshooting](#troubleshooting)
+11. [File Structure](#file-structure)
+12. [Restarting the Services](#restarting-the-services)
+13. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -30,10 +29,6 @@ A self-hosted, real-time camera surveillance dashboard for Blink cameras. Automa
 - Connects to your Blink camera account and takes snapshots from all configured cameras on a schedule (default every 5 minutes)
 - Stores photos organized by camera and date
 - Serves a local web dashboard showing live camera images, temperature, battery, and WiFi signal for each camera
-- Displays current weather conditions via Tomorrow.io API
-- Shows animated weather radar via RainViewer + Mapbox
-- Shows National Weather Service (NWS) severe weather alerts for your area
-- Shows National Hurricane Center (NHC) Atlantic hurricane alerts
 - Supports arm/disarm of your Blink system from the dashboard
 - Supports per-camera alert snoozing
 - Automatically cleans up old photos and logs based on configurable retention settings
@@ -146,7 +141,6 @@ This installs:
 - `blinkpy` — communicates with the Blink API
 - `Flask` — the web server
 - `waitress` — production-grade WSGI server for Flask
-- `requests` — HTTP requests for weather and alert APIs
 - `pillow` — image processing and validation
 - `python-dateutil` — date handling utilities
 
@@ -197,9 +191,6 @@ You will be asked for:
 **Cameras**
 Select which cameras from your account to monitor. You can monitor all of them or choose specific ones.
 
-**Location**
-Enter your city and 2-letter state code (e.g. `Pittsburgh` and `PA`). The script will automatically look up your GPS coordinates for weather and radar.
-
 **Polling Interval**
 How often snapshots are taken. Options are 1, 5, 10, 15, 30, or 60 minutes. The default is 5 minutes.
 
@@ -208,18 +199,6 @@ How many days of photos to keep per camera. The default is 7 days. Older photos 
 
 **Carousel Images**
 How many recent images to show in the web dashboard carousel per camera. Default is 5.
-
-**Tomorrow.io Weather API Key**
-Required for weather display. See [API Keys](#api-keys) below for instructions on getting a free key.
-
-**Mapbox API Token**
-Required for the animated radar map. See [API Keys](#api-keys) below for instructions.
-
-**NWS Alerts Zone**
-Optional. The National Weather Service forecast zone for your area (e.g. `PAZ021` for Pittsburgh). Find yours at https://www.weather.gov/ — enter your location and look for the zone code on your forecast page.
-
-**NHC Hurricane Alerts**
-Optional. Monitors the National Hurricane Center for active Atlantic basin hurricanes. Checks at 5 AM, 11 AM, 5 PM, and 11 PM daily.
 
 After completing setup, a `blink_config.json` file is saved in the project directory.
 
@@ -374,34 +353,6 @@ The startup script accepts optional arguments:
 
 ---
 
-## API Keys
-
-### Tomorrow.io (Weather)
-
-1. Go to https://www.tomorrow.io/weather-api/
-2. Click **Get Free API Key** and create an account
-3. After logging in, your API key is shown on the dashboard
-4. The free tier allows 500 calls per day which is more than enough
-
-### Mapbox (Radar Map Base Layer)
-
-1. Go to https://account.mapbox.com/
-2. Create a free account
-3. After logging in, your default public token is shown on the Tokens page
-4. Copy the token — it starts with `pk.`
-5. The free tier is generous and sufficient for personal use
-
-### NWS Zone (Weather Alerts)
-
-No API key required. You just need your forecast zone code.
-
-1. Go to https://www.weather.gov/
-2. Enter your city/zip in the forecast search
-3. On your local forecast page, look at the URL — it will contain your zone (e.g. `PAZ021`)
-4. Alternatively, go to https://alerts.weather.gov/ and browse to find your zone
-
----
-
 ## File Structure
 
 ```
@@ -415,8 +366,6 @@ Blink_WebCam/
 ├── alert_snooze.py          # Per-camera alert snooze management
 ├── blink_utils.py           # Shared utility functions
 ├── log_rotation.py          # Log file management
-├── nws_alerts.py            # NWS weather alert polling
-├── nhc_alerts.py            # NHC hurricane alert polling
 ├── requirements.txt         # Python dependencies
 ├── startup.sh               # Full kiosk startup script
 ├── clear_chrome_cache.sh    # Utility to clear Chrome cache
@@ -433,10 +382,6 @@ Blink_WebCam/
 │       ├── main.js          # Core app logic, theme, arm toggle
 │       ├── camera.js        # Camera carousel management
 │       ├── camera-refresh.js # Background camera data refresh
-│       ├── weather.js       # Weather widget
-│       ├── radar.js         # Animated radar widget
-│       ├── nws-alerts.js    # NWS alert widget
-│       ├── nhc-alerts.js    # NHC hurricane alert widget
 │       └── snooze.js        # Alert snooze functionality
 ├── cameras/                 # Auto-created — stores camera photos
 │   └── {camera-name}/
@@ -447,8 +392,7 @@ Blink_WebCam/
 │   │   ├── main/
 │   │   ├── token/
 │   │   ├── performance/
-│   │   ├── webserver/
-│   │   └── nws-alerts/
+│   │   └── webserver/
 │   └── cameras/
 │       └── {camera-name}/
 ├── blink_token.json         # Auto-created — Blink credentials (keep private)
@@ -501,24 +445,6 @@ DISPLAY=:0 xdotool key F5
 - Make sure port 5000 is not blocked by a firewall
 - Try accessing it directly: `curl http://localhost:5000`
 
-### Weather is not showing
-
-- Verify your Tomorrow.io API key is correct in `blink_config.json`
-- Check you have not exceeded the 500 calls/day free tier limit
-- Check the webserver log: `tail -f logs/system/webserver/webserver_$(date +%Y-%m-%d).log`
-
-### Radar is not showing
-
-- Verify your Mapbox token is correct in `blink_config.json`
-- Make sure the token starts with `pk.`
-- Open the browser developer console (F12) and look for errors
-
-### NWS alerts are never showing
-
-- Verify your zone code is correct (e.g. `PAZ021`)
-- Test it manually: `curl "https://api.weather.gov/alerts/active?zone=PAZ021"`
-- If the response has `features: []` there are simply no active alerts for your zone
-
 ### Chrome won't start in kiosk mode
 
 - Make sure `DISPLAY=:0` is set
@@ -545,7 +471,7 @@ python3 Blink_WebCam.py &
 
 ### Dashboard not recovering after power outage
 
-If the dashboard shows stale images or the weather shows "Service unavailable" after a power outage and does not recover on its own:
+If the dashboard shows stale images after a power outage and does not recover on its own:
 
 - The thin client likely booted before the router finished coming up
 - The `blink-webcam.service` ping gate should hold startup until the network is ready -- verify it is in place:
@@ -557,7 +483,7 @@ If the dashboard shows stale images or the weather shows "Service unavailable" a
   sudo cp Autostart/blink-webcam.service /etc/systemd/system/
   sudo systemctl daemon-reload
   ```
-- The weather widget will retry automatically every 30 seconds up to 10 times after a failed fetch -- if it still does not recover, restart the web server:
+- If the dashboard still does not recover, restart the web server:
   ```bash
   sudo systemctl restart blink-webserver.service
   ```
@@ -574,6 +500,6 @@ python3 camera_organizer.py --cleanup
 
 ## Notes
 
-- All photo data and logs stay entirely on your local machine — nothing is uploaded anywhere except the API calls to Blink, Tomorrow.io, and the public NWS/NHC/RainViewer APIs
+- All photo data and logs stay entirely on your local machine — nothing is uploaded anywhere except API calls to your Blink account
 - The `blink_token.json` and `blink_config.json` files are excluded from version control via `.gitignore` — never commit them
 - The camera service and web server are two separate processes intentionally — the camera poller runs independently of whether anyone is viewing the dashboard

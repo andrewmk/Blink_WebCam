@@ -4,6 +4,25 @@ All notable changes to Blink WebCam Monitor are documented here.
 
 ---
 
+## [Unreleased]
+
+### Removed
+
+- **Weather and alert widgets from the dashboard** -- the weather card
+  (Tomorrow.io), animated radar card (RainViewer + Mapbox), NWS severe
+  weather alerts, and NHC hurricane alerts are gone from the page header.
+  The web server no longer exposes the weather/radar/NWS/NHC API endpoints,
+  runs no background NWS/NHC polling, and writes no alert logs.
+- `nws_alerts.py` and `nhc_alerts.py` standalone alert tools
+- Weather/radar/NWS/NHC (and location) sections from
+  `blink_config_setup.py`; existing config keys are simply ignored now and
+  drop out on the next setup re-run
+- `requests` dependency (only used by the removed weather endpoint)
+- README API Keys section, weather/radar/NWS troubleshooting entries, and
+  related docs
+
+---
+
 ## [1.1.0] - 2026-06-28
 
 ### Fixed
