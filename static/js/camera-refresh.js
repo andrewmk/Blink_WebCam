@@ -273,10 +273,21 @@ async function updateCameraImages(camera, card) {
 
     console.log(`  ✓ NEW IMAGES DETECTED for ${camera.name}`);
 
-    // Remove old images and nav
+    // Keep the photo the viewer is looking at (they may have paged back to an
+    // older one): follow the new latest only if they were on the latest, stay
+    // on their photo if it survived the change, else fall back to the latest.
+    const activeImg = card.querySelector('.camera-image.active');
+    const activeFilename = activeImg ? (activeImg.dataset.filename || '') : '';
+    const newActiveIndex = window.computeCarouselActiveIndex(existingPaths, camera.images, activeFilename);
+    if (newActiveIndex !== 0) {
+        console.log(`  - Keeping viewer on photo index ${newActiveIndex}: ${activeFilename}`);
+    }
+
+    // Remove old images, arrows and nav
     existingImages.forEach(img => img.remove());
     const oldNav = card.querySelector('.image-nav');
     if (oldNav) oldNav.remove();
+    card.querySelectorAll('.card-carousel-nav').forEach(btn => btn.remove());
 
     // Add new images WITH CACHE-BUSTING QUERY PARAMETERS
     const cacheBuster = Date.now();
@@ -287,7 +298,7 @@ async function updateCameraImages(camera, card) {
         img.src = `/image/${camera.normalized_name}/${encodeURIComponent(imagePath)}?t=${cacheBuster}&i=${index}`;
         
         img.alt = camera.name;
-        img.className = `camera-image ${index === 0 ? 'active' : ''}`;
+        img.className = `camera-image ${index === newActiveIndex ? 'active' : ''}`;
         img.dataset.camera = camera.normalized_name;
         img.dataset.index = index;
         img.dataset.filename = imagePath;
@@ -295,14 +306,32 @@ async function updateCameraImages(camera, card) {
         imageContainer.appendChild(img);
     });
 
-    // Add navigation dots if multiple images
+    // Add arrows and navigation dots if multiple images
     if (camera.images.length > 1) {
+        const prev = document.createElement('button');
+        prev.className = 'card-carousel-nav card-carousel-nav-prev';
+        prev.dataset.camera = camera.normalized_name;
+        prev.dataset.dir = '-1';
+        prev.title = 'Previous photo';
+        prev.setAttribute('aria-label', 'Previous photo');
+        prev.textContent = '\u2039';
+        imageContainer.appendChild(prev);
+
+        const next = document.createElement('button');
+        next.className = 'card-carousel-nav card-carousel-nav-next';
+        next.dataset.camera = camera.normalized_name;
+        next.dataset.dir = '1';
+        next.title = 'Next photo';
+        next.setAttribute('aria-label', 'Next photo');
+        next.textContent = '\u203A';
+        imageContainer.appendChild(next);
+
         const nav = document.createElement('div');
         nav.className = 'image-nav';
 
         camera.images.forEach((imagePath, index) => {
             const dot = document.createElement('div');
-            dot.className = `nav-dot ${index === 0 ? 'active' : ''}`;
+            dot.className = `nav-dot ${index === newActiveIndex ? 'active' : ''}`;
             dot.dataset.camera = camera.normalized_name;
             dot.dataset.index = index;
             dot.addEventListener('click', () => {
@@ -328,9 +357,9 @@ async function updateCameraImages(camera, card) {
         }
     }
 
-    // Update timestamp for first image
+    // Update timestamp for the photo being displayed
     if (camera.images.length > 0) {
-        updateImageTimestamp(camera.normalized_name, camera.images[0]);
+        updateImageTimestamp(camera.normalized_name, camera.images[newActiveIndex]);
     }
 
     console.log(`  ✓ Images refreshed for ${camera.name} with cache buster: ${cacheBuster}`);

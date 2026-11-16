@@ -129,6 +129,25 @@ document.addEventListener('click', function(e) {
 });
 
 // ============================================================================
+// ACTIVE PHOTO AFTER A LIST CHANGE
+// ============================================================================
+
+// Decide which photo a card should show after its photo list changes (a new
+// photo arrived on refresh). The viewer's photo wins, per the "don't disturb
+// the photo being viewed" principle the lightbox follows:
+//   - viewer was on the latest photo -> follow the new latest (index 0)
+//   - viewer's photo is still in the new list -> stay on it (its new index)
+//   - viewer's photo fell out of the list -> fall back to the latest (0)
+// Returns -1 when the new list is empty (camera went offline).
+function computeCarouselActiveIndex(oldPaths, newPaths, activeFilename) {
+    if (newPaths.length === 0) return -1;
+    if (!activeFilename) return 0;
+    if (activeFilename === oldPaths[0]) return 0; // was on latest -> follow new latest
+    const index = newPaths.indexOf(activeFilename);
+    return index >= 0 ? index : 0;
+}
+
+// ============================================================================
 // TIMESTAMP EXTRACTION & DISPLAY
 // ============================================================================
 
@@ -271,5 +290,6 @@ setInterval(checkForStaleImages, 60000);
 window.cameras = cameras;
 window.initializeCameras = initializeCameras;
 window.switchImage = switchImage;
+window.computeCarouselActiveIndex = computeCarouselActiveIndex;
 window.updateImageTimestamp = updateImageTimestamp;
 window.checkForStaleImages = checkForStaleImages;
