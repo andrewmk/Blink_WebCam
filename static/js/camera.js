@@ -1,5 +1,8 @@
 // camera.js - Camera carousel and image management
-// COMPLETE REPLACEMENT FOR static/js/camera.js
+//
+// Cards are static photos, not slideshows: no auto-rotation. The viewer
+// pages with the ‹ › arrows (or the dots); the time chip always shows the
+// displayed photo's capture time.
 
 // ============================================================================
 // CAMERA CAROUSEL MANAGEMENT
@@ -26,8 +29,12 @@ function initializeCameras() {
         const dots = card.querySelectorAll(`.nav-dot[data-camera="${cameraName}"]`);
         
         if (images.length > 0) {
+            // The DOM is the source of truth: derive the current position
+            // from the active image so a rebuild (refresh) that restores the
+            // viewer's photo keeps navigation in sync.
+            const activeIndex = Array.from(images).findIndex(img => img.classList.contains('active'));
             cameras[cameraName] = {
-                currentIndex: 0,
+                currentIndex: activeIndex >= 0 ? activeIndex : 0,
                 images: images,
                 dots: dots
             };
@@ -89,30 +96,34 @@ function switchImage(cameraName, index) {
 }
 
 // ============================================================================
-// AUTO-CYCLE IMAGES
+// NAV DOT + ARROW CLICK HANDLERS - DELEGATE TO CONTAINER
 // ============================================================================
 
-setInterval(() => {
-    Object.keys(cameras).forEach(cameraName => {
-        const cam = cameras[cameraName];
-        if (cam && cam.images.length > 1) {
-            const nextIndex = (cam.currentIndex + 1) % cam.images.length;
-            switchImage(cameraName, nextIndex);
-        }
-    });
-}, 3000);
-
-// ============================================================================
-// NAV DOT CLICK HANDLERS - DELEGATE TO CONTAINER
-// ============================================================================
+// Delegated (not per-element) so the handlers survive updateCameraImages
+// rebuilding the card DOM on refresh.
 
 document.addEventListener('click', function(e) {
+    if (!e.target.classList) return;
+
     if (e.target.classList.contains('nav-dot')) {
         const cameraName = e.target.dataset.camera;
         const index = parseInt(e.target.dataset.index);
         
         if (cameraName && !isNaN(index)) {
             switchImage(cameraName, index);
+        }
+        return;
+    }
+
+    // Card carousel arrows: step one photo with wrap-around, like the lightbox.
+    // The time chip follows via switchImage -> updateImageTimestamp.
+    if (e.target.classList.contains('card-carousel-nav')) {
+        const cameraName = e.target.dataset.camera;
+        const delta = parseInt(e.target.dataset.dir, 10);
+        const cam = cameraName ? cameras[cameraName] : null;
+        if (cam && cam.images.length > 1 && !isNaN(delta)) {
+            const count = cam.images.length;
+            switchImage(cameraName, (cam.currentIndex + delta + count) % count);
         }
     }
 });
