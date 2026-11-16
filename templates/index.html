@@ -164,6 +164,15 @@
                      data-filename="{{ image }}">
                 {% endfor %}
                 {% if camera.images|length > 1 %}
+                {# Manual carousel arrows: no auto-rotation, so the viewer pages #}
+                <button class="card-carousel-nav card-carousel-nav-prev"
+                        data-camera="{{ camera.normalized_name }}"
+                        data-dir="-1"
+                        title="Previous photo" aria-label="Previous photo">&#x2039;</button>
+                <button class="card-carousel-nav card-carousel-nav-next"
+                        data-camera="{{ camera.normalized_name }}"
+                        data-dir="1"
+                        title="Next photo" aria-label="Next photo">&#x203A;</button>
                 <div class="image-nav">
                     {% for image in camera.images %}
                     <div class="nav-dot {% if loop.first %}active{% endif %}"
@@ -211,7 +220,7 @@
 {% endif %}
 
 <footer>
-     Live updates every {{ config.get('poll_interval', 300) // 60 }} min | Carousel cycles every 3 sec
+     Live updates every {{ config.get('poll_interval', 300) // 60 }} min
 </footer>
 </div>
 
