@@ -36,11 +36,23 @@ title: Blink Web Cam — photo store and dashboard image display
   `YYYY-MM-DD HH:MM:SS`. Deliberately NOT routed through the locale-aware `format.js`
   helpers (the page's single formatting point for everything else) — the fixed shape was
   a user choice for the chips.
+- **Manual carousel, no auto-rotation.** A card is not a slideshow: it shows the
+  photo the viewer last chose, indefinitely. On load (and when a camera (re)appears)
+  the card shows the **latest** photo (the server lists photos newest-first, so
+  index 0). Multi-photo cameras get circular ‹ › arrows at mid-height, left/right of
+  the photo — lightbox-styled, wrapping, hidden for single-photo cameras — alongside
+  the position dots, and the time chip always shows the displayed photo. The same
+  "don't disturb the photo being viewed" principle as the lightbox applies: when a
+  refresh adds photos, a card the viewer paged back stays on that photo (it shifts
+  down a slot); a card showing the latest follows the new latest; a card whose photo
+  fell out of the photo window falls back to the latest. The previous 3-second
+  auto-rotation was removed at the user's request.
 - **Corner ownership on the image.** Chips are the base layer of the top corners
   (z-index below the alert badges). The snooze badge sits at top:48px on every card so
   it clears the name chip; the stale badge cascade (top:96px) sits below it. Top-right
-  additionally stacks the offline/duplicate badges below the time chip; bottom-center is
-  the carousel dots, bottom-right the snooze button.
+  additionally stacks the offline/duplicate badges below the time chip; mid-height
+  left/right are the carousel arrows (multi-photo cameras only — clear of every badge),
+  bottom-center the carousel dots, bottom-right the snooze button.
 - **Click-to-zoom lightbox.** Clicking a card photo opens a full-viewport overlay
   showing that same photo nearly full size. It is still presentation-only: a separate
   `<img>` reusing the card's own `/image/...` URL — no new server route, no
@@ -51,7 +63,7 @@ title: Blink Web Cam — photo store and dashboard image display
   that camera's carousel photos (arrows hidden for single-photo cameras); the lightbox
   **snapshots** the photo list at open, so a background refresh cannot disturb the photo
   being viewed (old files stay on disk, their URLs keep serving), while the card's own
-  carousel keeps cycling underneath. Layering: the lightbox (z-index 3000) sits above
+  carousel stays put on the photo the viewer selected. Layering: the lightbox (z-index 3000) sits above
   the snooze modals (2000) and the alert banner (1000).
 
 ## Invariants

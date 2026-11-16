@@ -33,6 +33,16 @@ All notable changes to Blink WebCam Monitor are documented here.
 
 ### Changed
 
+- **Manual photo carousels on dashboard cards** -- cards no longer rotate
+  automatically every 3 seconds. Each card starts on its latest photo, and
+  cameras with multiple photos get circular ‹ › arrows (mid-height on the
+  left/right of the photo, lightbox-styled, wrap around, hidden for
+  single-photo cameras) to page manually; the position dots stay and keep in
+  sync, and the timestamp chip always matches the displayed photo. When a
+  background refresh brings a new photo, the card keeps showing the photo you
+  were viewing: it follows the new latest only if you were on the latest, and
+  falls back to the latest only if your photo fell out of the photo window.
+  The footer no longer advertises the auto-cycle interval. Front-end only.
 - `alert_snooze.json` entries are stored as offset-aware ISO strings; legacy
   naive entries still parse and are treated as local time
 - `/api/cameras/refresh` no longer returns the server-formatted US-style
